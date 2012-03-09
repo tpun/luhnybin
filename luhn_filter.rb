@@ -1,15 +1,17 @@
 require 'set'
 
 class String
-  # first `n` appearance of characters in `only`
-  def first n, only
+  # first `n` appearance of characters in `only` given
+  # it's a string consisted only chacaters in `valid`
+  def first n, only, valid
     return "" if self.length < n
 
     substring = ""
     count = 0
     self.length.times do |i|
-      break if count == n
       char = self[i]
+      break if count == n or !valid.include? char
+
       substring << char
       count += 1 if only.include? char
     end
@@ -21,9 +23,13 @@ class String
     end
   end
 
+  def digits?
+    self == self.to_i.to_s
+  end
+
   def mask_digits! start, count, replacement
     (start..start+count-1).each do |i|
-      self[i] = replacement if self[i] == self[i].to_i.to_s
+      self[i] = replacement if self[i].digits?
     end
   end
 
@@ -31,17 +37,17 @@ class String
     self.gsub /[A-Z+a-z+\-+\ ]/, ''
   end
 
-  def luhn_check?
+  def luhn_check? length_range
     digits = remove_non_digits
 
     length = digits.length
-    return false unless (14..16).cover? length
+    return false unless length_range.cover? length
 
     sum = 0
     length.times do |n|
       c = digits[-(1+n)]
       digit = c.to_i
-      if n.odd?
+      if n.odd? # every other digit
         digit *= 2
         sum += (digit/10) + (digit%10)
       else
@@ -62,14 +68,15 @@ class LuhnFilter
   end
 
   def filtered
-    only = Set.new (0..9).map &:to_s
-    @unfiltered.length.times do |n|
-      break if @unfiltered.length - n < MinLength
+    digit_set = Set.new ((0..9).map &:to_s)
+    valid_set = digit_set + Set.new(['-', ' '])
+    length_range = (MinLength..MaxLength)
 
+    (0..@unfiltered.length-MinLength).each do |start|
       (MinLength..MaxLength).reverse_each do |length|
-        unsanitized = @unfiltered[n..-1].first length, only
-        if unsanitized.luhn_check?
-          @filtered.mask_digits! n, unsanitized.length, 'X'
+        unsanitized = @unfiltered[start..-1].first length, digit_set, valid_set
+        if unsanitized.luhn_check? length_range
+          @filtered.mask_digits! start, unsanitized.length, 'X'
           break # since we don't need to test for shorter code
         end
       end

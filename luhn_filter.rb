@@ -8,12 +8,10 @@ class String
     substring = ""
     count = 0
     self.length.times do |i|
-      (i..self.length-1).each do |i|
-        char = self[i]
-        break if count == n
-        substring << char
-        count += 1 if only.include? char
-      end
+      break if count == n
+      char = self[i]
+      substring << char
+      count += 1 if only.include? char
     end
 
     if count == n
@@ -24,7 +22,13 @@ class String
   end
 
   def mask_digits! start, count, replacement
-    self[start..start+count-1] = replacement * count
+    (start..start+count-1).each do |i|
+      self[i] = replacement if self[i] == self[i].to_i.to_s
+    end
+  end
+
+  def remove_non_digits
+    self.gsub /[A-Z+a-z+\-+\ ]/, ''
   end
 end
 
@@ -54,7 +58,7 @@ class LuhnFilter
   end
 
   def passed? unsanitized
-    digits = remove_non_digits unsanitized
+    digits = unsanitized.remove_non_digits
 
     length = digits.length
     return false unless (14..16).cover? length
@@ -72,16 +76,11 @@ class LuhnFilter
     end
     sum % 10 == 0
   end
-
-  def remove_non_digits unsanitized
-    unsanitized.gsub /[A-Z+a-z+\-+\ ]/, ''
-  end
 end
 
 
 # # Read from stdin
 $stdin.each_line do |line|
-$stderr.puts "test: #{line}"
   luhn = LuhnFilter.new line
   $stdout.puts luhn.filtered
 end

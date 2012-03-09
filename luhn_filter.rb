@@ -30,6 +30,26 @@ class String
   def remove_non_digits
     self.gsub /[A-Z+a-z+\-+\ ]/, ''
   end
+
+  def luhn_check?
+    digits = remove_non_digits
+
+    length = digits.length
+    return false unless (14..16).cover? length
+
+    sum = 0
+    length.times do |n|
+      c = digits[-(1+n)]
+      digit = c.to_i
+      if n.odd?
+        digit *= 2
+        sum += (digit/10) + (digit%10)
+      else
+        sum += digit
+      end
+    end
+    sum % 10 == 0
+  end
 end
 
 class LuhnFilter
@@ -48,33 +68,13 @@ class LuhnFilter
 
       (MinLength..MaxLength).reverse_each do |length|
         unsanitized = @unfiltered[n..-1].first length, only
-        if passed? unsanitized
+        if unsanitized.luhn_check?
           @filtered.mask_digits! n, unsanitized.length, 'X'
           break # since we don't need to test for shorter code
         end
       end
     end
     @filtered
-  end
-
-  def passed? unsanitized
-    digits = unsanitized.remove_non_digits
-
-    length = digits.length
-    return false unless (14..16).cover? length
-
-    sum = 0
-    length.times do |n|
-      c = digits[-(1+n)]
-      digit = c.to_i
-      if n.odd?
-        digit *= 2
-        sum += (digit/10) + (digit%10)
-      else
-        sum += digit
-      end
-    end
-    sum % 10 == 0
   end
 end
 

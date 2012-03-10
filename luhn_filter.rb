@@ -4,11 +4,11 @@ class String
   # first `n` appearance of characters in `only` given
   # it's a string consisted only chacaters in `valid`
   def first n, only, valid
-    return "" if self.length < n
+    return "" if length < n
 
     substring = ""
     count = 0
-    self.length.times do |i|
+    length.times do |i|
       char = self[i]
       break if count == n or !valid.include? char
 
@@ -45,7 +45,7 @@ class String
 
     sum = 0
     length.times do |n|
-      c = digits[-(1+n)]
+      c = digits[-(1+n)] # count from right
       digit = c.to_i
       if n.odd? # every other digit
         digit *= 2
@@ -65,23 +65,30 @@ class LuhnFilter
   def initialize unfiltered
     @unfiltered = unfiltered.chomp
     @filtered = unfiltered.clone
+    @digit_set = Set.new ((0..9).map &:to_s)
+    @valid_set = @digit_set + Set.new(['-', ' '])
+    @length_range = (MinLength..MaxLength)
   end
 
   def filtered
-    digit_set = Set.new ((0..9).map &:to_s)
-    valid_set = digit_set + Set.new(['-', ' '])
-    length_range = (MinLength..MaxLength)
-
     (0..@unfiltered.length-MinLength).each do |start|
-      (MinLength..MaxLength).reverse_each do |length|
-        unsanitized = @unfiltered[start..-1].first length, digit_set, valid_set
-        if unsanitized.luhn_check? length_range
+      sorted_substrings(start).each do |unsanitized|
+        if unsanitized.luhn_check? @length_range
           @filtered.mask_digits! start, unsanitized.length, 'X'
           break # since we don't need to test for shorter code
         end
       end
     end
     @filtered
+  end
+
+  # from longest to shortest
+  def sorted_substrings start
+    [].tap do |substrings|
+      @length_range.reverse_each do |length|
+        substrings << @unfiltered[start..-1].first(length, @digit_set, @valid_set)
+      end
+    end
   end
 end
 

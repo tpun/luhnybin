@@ -40,11 +40,10 @@ class LuhnFilter
       unsanitized = matched[0] # actual matched string
       digits_only = unsanitized.remove_non_digits
       if digits_only.luhn_check?
-        masked = unsanitized.mask_digits 'X'
         # MatchData#offset gives you the range of the first appearance of
         # matched data to the first non matched
         matched_range = matched.offset(0).first .. (matched.offset(0).last-1)
-        @filtered[matched_range] = masked
+        @filtered[matched_range] = unsanitized.mask_digits 'X'
       end
       start += 1
     end

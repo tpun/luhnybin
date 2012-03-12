@@ -1,4 +1,15 @@
 class String
+  # Returns the first appearance of the matched substring along with
+  # the range indicating the index of the first and last characters.
+  def possible_credit_card_match from=0
+    matched = match /([\ \-]*+\d){14,16}/, from
+    return nil if matched.nil?
+
+    # MatchData#offset gives you the range of the first appearance of
+    # matched data to the first non matched
+    [matched[0], matched.offset(0).first..(matched.offset(0).last-1)]
+  end
+
   def mask_digits replacement
     gsub /\d/, replacement
   end
@@ -28,23 +39,20 @@ class LuhnFilter
   def initialize unfiltered
     @unfiltered = unfiltered
     @filtered = unfiltered.clone
-    @cc_regex = /([\ \-]*+\d){14,16}/
   end
 
   def filtered
     start = 0
     while start < @unfiltered.length
-      matched = @unfiltered.match @cc_regex, start
-      break if matched.nil?
+      unsanitized, matched_range = @unfiltered.possible_credit_card_match start
+      break if unsanitized.nil?
 
-      unsanitized = matched[0] # actual matched string
       digits_only = unsanitized.remove_non_digits
       if digits_only.luhn_check?
-        # MatchData#offset gives you the range of the first appearance of
-        # matched data to the first non matched
-        matched_range = matched.offset(0).first .. (matched.offset(0).last-1)
         @filtered[matched_range] = unsanitized.mask_digits 'X'
+        start = matched_range.first
       end
+
       start += 1
     end
 

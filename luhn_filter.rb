@@ -1,51 +1,16 @@
-require 'set'
-
 class String
-  # first `n` appearance of characters in `only` given
-  # it's a string consisted only chacaters in `valid`
-  def first n, only, valid
-    return "" if length < n
-
-    substring = ""
-    count = 0
-    length.times do |i|
-      char = self[i]
-      break if count == n or !valid.include? char
-
-      substring << char
-      count += 1 if only.include? char
-    end
-
-    if count == n
-      substring
-    else
-      "" # since we didn't get the requested length
-    end
-  end
-
-  def digits?
-    self == self.to_i.to_s
-  end
-
-  def mask_digits! start, count, replacement
-    (start..start+count-1).each do |i|
-      self[i] = replacement if self[i].digits?
-    end
+  def mask_digits replacement
+    gsub /\d/, replacement
   end
 
   def remove_non_digits
-    self.gsub /[A-Z+a-z+\-+\ ]/, ''
+    self.gsub /[^\d]/, ''
   end
 
-  def luhn_check? length_range
-    digits = remove_non_digits
-
-    length = digits.length
-    return false unless length_range.cover? length
-
+  def luhn_check?
     sum = 0
     length.times do |n|
-      c = digits[-(1+n)] # count from right
+      c = self[-(1+n)] # count from right
       digit = c.to_i
       if n.odd? # every other digit
         digit *= 2
@@ -54,41 +19,37 @@ class String
         sum += digit
       end
     end
+
     sum % 10 == 0
   end
 end
 
 class LuhnFilter
-  MinLength = 14
-  MaxLength = 16
-
   def initialize unfiltered
-    @unfiltered = unfiltered.chomp
+    @unfiltered = unfiltered
     @filtered = unfiltered.clone
-    @digit_set = Set.new ((0..9).map &:to_s)
-    @valid_set = @digit_set + Set.new(['-', ' '])
-    @length_range = (MinLength..MaxLength)
+    @cc_regex = /([\ \-]*+\d){14,16}/
   end
 
   def filtered
-    (0..@unfiltered.length-MinLength).each do |start|
-      sorted_substrings(start).each do |unsanitized|
-        if unsanitized.luhn_check? @length_range
-          @filtered.mask_digits! start, unsanitized.length, 'X'
-          break # since we don't need to test for shorter code
-        end
-      end
-    end
-    @filtered
-  end
+    start = 0
+    while start < @unfiltered.length
+      matched = @unfiltered.match @cc_regex, start
+      break if matched.nil?
 
-  # from longest to shortest
-  def sorted_substrings start
-    [].tap do |substrings|
-      @length_range.reverse_each do |length|
-        substrings << @unfiltered[start..-1].first(length, @digit_set, @valid_set)
+      unsanitized = matched[0] # actual matched string
+      digits_only = unsanitized.remove_non_digits
+      if digits_only.luhn_check?
+        masked = unsanitized.mask_digits 'X'
+        # MatchData#offset gives you the range of the first appearance of
+        # matched data to the first non matched
+        matched_range = matched.offset(0).first .. (matched.offset(0).last-1)
+        @filtered[matched_range] = masked
       end
+      start += 1
     end
+
+    @filtered
   end
 end
 
